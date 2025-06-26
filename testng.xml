@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="All Test Suite" parallel="false">
+
+    <test name="Test">
+        <parameter name="platformName" value="Android"/>
+        <parameter name="deviceName" value="pixel_7"/>
+        <parameter name="udid" value="emulator-5554"/>
+        <classes>
+            <class name="Tests.HomeTests">
+
+            </class>
+<!--            <class name="Tests.ProductTests">-->
+            <!--                <methods>-->
+<!--                    <include name="InvalidUsername">-->
+
+<!--                    </include>-->
+<!--                </methods>-->
+
+<!--            </class>-->
+        </classes>
+    </test>
+</suite>

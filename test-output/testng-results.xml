@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testng-results ignored="0" total="1" passed="1" failed="0" skipped="0">
+  <reporter-output>
+  </reporter-output>
+  <suite started-at="2025-06-26T19:01:29 PKT" name="All Test Suite" finished-at="2025-06-26T19:01:46 PKT" duration-ms="17022">
+    <groups>
+    </groups>
+    <test started-at="2025-06-26T19:01:29 PKT" name="Test" finished-at="2025-06-26T19:01:46 PKT" duration-ms="17022">
+      <class name="Tests.HomeTests">
+        <test-method is-config="true" signature="beforeSuite()[pri:0, instance:Tests.HomeTests@67a20f67]" started-at="2025-06-26T19:01:16 PKT" name="beforeSuite" finished-at="2025-06-26T19:01:29 PKT" duration-ms="13645" status="PASS">
+          <reporter-output>
+          </reporter-output>
+        </test-method> <!-- beforeSuite -->
+        <test-method is-config="true" signature="BeforeTestHook(java.lang.String,java.lang.String,java.lang.String)[pri:0, instance:Tests.HomeTests@67a20f67]" started-at="2025-06-26T19:01:29 PKT" name="BeforeTestHook" finished-at="2025-06-26T19:01:43 PKT" duration-ms="13228" status="PASS">
+          <params>
+            <param index="0">
+              <value>
+                <![CDATA[Android]]>
+              </value>
+            </param>
+            <param index="1">
+              <value>
+                <![CDATA[pixel_7]]>
+              </value>
+            </param>
+            <param index="2">
+              <value>
+                <![CDATA[emulator-5554]]>
+              </value>
+            </param>
+          </params>
+          <reporter-output>
+          </reporter-output>
+        </test-method> <!-- BeforeTestHook -->
+        <test-method is-config="true" signature="beforemethod(java.lang.reflect.Method)[pri:0, instance:Tests.HomeTests@67a20f67]" started-at="2025-06-26T19:01:43 PKT" name="beforemethod" finished-at="2025-06-26T19:01:44 PKT" duration-ms="1581" status="PASS">
+          <params>
+            <param index="0">
+              <value>
+                <![CDATA[public void Tests.HomeTests.Scenario1() throws java.lang.InterruptedException]]>
+              </value>
+            </param>
+          </params>
+          <reporter-output>
+          </reporter-output>
+        </test-method> <!-- beforemethod -->
+        <test-method signature="Scenario1()[pri:1, instance:Tests.HomeTests@67a20f67]" started-at="2025-06-26T19:01:44 PKT" name="Scenario1" finished-at="2025-06-26T19:01:46 PKT" duration-ms="2109" status="PASS">
+          <reporter-output>
+          </reporter-output>
+        </test-method> <!-- Scenario1 -->
+        <test-method is-config="true" signature="afterSuite()[pri:0, instance:Tests.HomeTests@67a20f67]" started-at="2025-06-26T19:01:47 PKT" name="afterSuite" finished-at="2025-06-26T19:01:50 PKT" duration-ms="3026" status="PASS">
+          <reporter-output>
+          </reporter-output>
+        </test-method> <!-- afterSuite -->
+      </class> <!-- Tests.HomeTests -->
+    </test> <!-- Test -->
+  </suite> <!-- All Test Suite -->
+</testng-results>

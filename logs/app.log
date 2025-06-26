@@ -1,0 +1,5 @@
+[INFO ] 2025-06-25 19:33:28.037 [main] BaseTest - starting server
+[INFO ] 2025-06-25 19:33:41.432 [main] BaseTest - started driver session with id f3901c9e-af98-4963-8f75-208986f54a92
+[INFO ] 2025-06-25 19:33:43.811 [main] BaseTest - Tapping on wrap button
+[INFO ] 2025-06-25 19:33:45.144 [main] HomeTests - Click on wrap
+[INFO ] 2025-06-25 19:33:49.339 [main] BaseTest - stopping server
