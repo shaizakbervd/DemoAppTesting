@@ -20,7 +20,7 @@ pipeline {
     }
     
     environment {
-        ANDROID_HOME = 'C:\\Users\\shaiz.akber_ventured\\AppData\\Local\\Android\\Sdk'
+        ANDROID_HOME = 'C:\\Android\\sdk'
         JAVA_HOME = 'C:\\Program Files\\Java\\jdk-21'
         PATH = "${ANDROID_HOME}\\platform-tools;${ANDROID_HOME}\\tools;${ANDROID_HOME}\\emulator;${JAVA_HOME}\\bin;${PATH}"
         MAVEN_OPTS = '-Xmx1024m'
@@ -68,57 +68,23 @@ pipeline {
                     steps {
                         bat '''
                             echo "Checking Android SDK installation..."
-                            
-                            rem Check common Android SDK locations
-                            set SDK_FOUND=0
-                            
-                            if exist "%ANDROID_HOME%" (
-                                echo "Android SDK found at: %ANDROID_HOME%"
-                                set SDK_FOUND=1
-                            ) else (
-                                echo "Android SDK not found at: %ANDROID_HOME%"
-                                
-                                rem Check other common locations
-                                if exist "C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk" (
-                                    echo "Found Android SDK at: C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk"
-                                    set ANDROID_HOME=C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk
-                                    set SDK_FOUND=1
-                                ) else if exist "C:\\Android\\android-sdk" (
-                                    echo "Found Android SDK at: C:\\Android\\android-sdk"
-                                    set ANDROID_HOME=C:\\Android\\android-sdk
-                                    set SDK_FOUND=1
-                                ) else if exist "C:\\Program Files\\Android\\android-sdk" (
-                                    echo "Found Android SDK at: C:\\Program Files\\Android\\android-sdk"
-                                    set ANDROID_HOME=C:\\Program Files\\Android\\android-sdk
-                                    set SDK_FOUND=1
-                                )
-                            )
-                            
-                            if %SDK_FOUND%==0 (
-                                echo "ERROR: Android SDK not found in any common locations!"
-                                echo "Please install Android Studio or Android SDK manually"
-                                echo "Common locations to check:"
-                                echo "  - C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk"
-                                echo "  - C:\\Android\\android-sdk"
-                                echo "  - C:\\Program Files\\Android\\android-sdk"
+                            if not exist "%ANDROID_HOME%" (
+                                echo "ERROR: Android SDK not found at %ANDROID_HOME%"
+                                echo "Please install Android SDK or update ANDROID_HOME path"
                                 exit /b 1
                             )
-                            
-                            echo "Updating PATH with Android SDK tools..."
-                            set PATH=%ANDROID_HOME%\\platform-tools;%ANDROID_HOME%\\tools;%ANDROID_HOME%\\emulator;%PATH%
                             
                             echo "Checking ADB..."
                             where adb || echo "ADB not found in PATH"
                             
                             echo "Listing available devices..."
-                            adb devices || echo "ADB command failed"
+                            adb devices
                             
                             echo "Checking emulator..."
                             if exist "%ANDROID_HOME%\\emulator\\emulator.exe" (
-                                echo "Emulator found, listing AVDs..."
-                                "%ANDROID_HOME%\\emulator\\emulator.exe" -list-avds || echo "No AVDs found"
+                                "%ANDROID_HOME%\\emulator\\emulator.exe" -list-avds
                             ) else (
-                                echo "Emulator executable not found at %ANDROID_HOME%\\emulator\\emulator.exe"
+                                echo "Emulator not found"
                             )
                         '''
                     }
@@ -181,7 +147,7 @@ pipeline {
                                 echo "ERROR: Emulator failed to start within 5 minutes"
                                 exit /b 1
                             )
-                            timeout /t 5 >nul
+                            timeout/t 5 >nul
                             adb devices | findstr "%UDID%" >nul
                             if %errorlevel% neq 0 (
                                 set /a TIMEOUT=%TIMEOUT%-1
