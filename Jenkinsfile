@@ -20,9 +20,9 @@ pipeline {
     }
     
     environment {
-        ANDROID_HOME = '/opt/android-sdk'
-        JAVA_HOME = '/usr/lib/jvm/java-21-openjdk'
-        PATH = "${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/tools:${ANDROID_HOME}/emulator:${JAVA_HOME}/bin:${PATH}"
+        ANDROID_HOME = 'C:\\Android\\sdk'
+        JAVA_HOME = 'C:\\Program Files\\Java\\jdk-21'
+        PATH = "${ANDROID_HOME}\\platform-tools;${ANDROID_HOME}\\tools;${ANDROID_HOME}\\emulator;${JAVA_HOME}\\bin;${PATH}"
         MAVEN_OPTS = '-Xmx1024m'
         BUILD_TIMESTAMP = "${new Date().format('yyyy-MM-dd_HH-mm-ss')}"
     }
@@ -43,18 +43,20 @@ pipeline {
             parallel {
                 stage('Install Dependencies') {
                     steps {
-                        sh '''
+                        bat '''
                             echo "Checking Java version..."
                             java -version
                             
                             echo "Checking Maven version..."
                             mvn -version
                             
-                            echo "Installing Node.js and Appium (backup in case programmatic server fails)..."
-                            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-                            sudo apt-get install -y nodejs
-                            sudo npm install -g appium@2.0.0
-                            sudo npm install -g @appium/doctor
+                            echo "Checking Node.js and Appium..."
+                            where node || echo "Node.js not found in PATH"
+                            where npm || echo "npm not found in PATH"
+                            
+                            echo "Installing/Updating Appium if needed..."
+                            npm list -g appium || npm install -g appium@2.0.0
+                            npm list -g @appium/doctor || npm install -g @appium/doctor
                             
                             echo "Verifying Appium installation..."
                             appium --version
@@ -64,22 +66,26 @@ pipeline {
                 
                 stage('Verify Android Setup') {
                     steps {
-                        sh '''
+                        bat '''
                             echo "Checking Android SDK installation..."
-                            if [ ! -d "$ANDROID_HOME" ]; then
-                                echo "Android SDK not found. Installing..."
-                                sudo mkdir -p /opt/android-sdk
-                                cd /opt/android-sdk
-                                sudo wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-                                sudo unzip commandlinetools-linux-9477386_latest.zip
-                                sudo rm commandlinetools-linux-9477386_latest.zip
-                            fi
+                            if not exist "%ANDROID_HOME%" (
+                                echo "ERROR: Android SDK not found at %ANDROID_HOME%"
+                                echo "Please install Android SDK or update ANDROID_HOME path"
+                                exit /b 1
+                            )
+                            
+                            echo "Checking ADB..."
+                            where adb || echo "ADB not found in PATH"
                             
                             echo "Listing available devices..."
                             adb devices
                             
-                            echo "Checking emulator status..."
-                            ${ANDROID_HOME}/emulator/emulator -list-avds || true
+                            echo "Checking emulator..."
+                            if exist "%ANDROID_HOME%\\emulator\\emulator.exe" (
+                                "%ANDROID_HOME%\\emulator\\emulator.exe" -list-avds
+                            ) else (
+                                echo "Emulator not found"
+                            )
                         '''
                     }
                 }
@@ -88,24 +94,25 @@ pipeline {
         
         stage('Prepare Test Environment') {
             steps {
-                sh '''
+                bat '''
                     echo "Cleaning previous test artifacts..."
-                    rm -rf target/
-                    rm -rf test-output/
-                    rm -rf logs/*.log
+                    if exist "target" rmdir /s /q "target"
+                    if exist "test-output" rmdir /s /q "test-output"
+                    if exist "logs\\*.log" del /q "logs\\*.log"
                     
                     echo "Creating necessary directories..."
-                    mkdir -p logs
-                    mkdir -p Videos
-                    mkdir -p Screenshots
+                    if not exist "logs" mkdir "logs"
+                    if not exist "Videos" mkdir "Videos"
+                    if not exist "Screenshots" mkdir "Screenshots"
                     
                     echo "Checking APK file..."
-                    if [ -f "src/main/resources/App/draganddrop.apk" ]; then
-                        echo "APK file found: $(ls -la src/main/resources/App/draganddrop.apk)"
-                    else
+                    if exist "src\\main\\resources\\App\\draganddrop.apk" (
+                        echo "APK file found"
+                        dir "src\\main\\resources\\App\\draganddrop.apk"
+                    ) else (
                         echo "ERROR: APK file not found!"
-                        exit 1
-                    fi
+                        exit /b 1
+                    )
                 '''
             }
         }
@@ -116,39 +123,44 @@ pipeline {
             }
             steps {
                 script {
-                    sh '''
+                    bat '''
                         echo "Starting Android emulator..."
                         
-                        # Check if emulator is already running
-                        if adb devices | grep -q "${UDID}"; then
-                            echo "Emulator ${UDID} is already running"
-                        else
-                            echo "Starting emulator ${DEVICE_NAME}..."
+                        rem Check if emulator is already running
+                        adb devices | findstr "%UDID%" >nul
+                        if %errorlevel% equ 0 (
+                            echo "Emulator %UDID% is already running"
+                        ) else (
+                            echo "Starting emulator %DEVICE_NAME%..."
                             
-                            # Start emulator in background
-                            nohup ${ANDROID_HOME}/emulator/emulator -avd ${DEVICE_NAME} -port ${UDID##*-} -no-audio -no-window -gpu swiftshader_indirect &
+                            rem Extract port number from UDID (emulator-5554 -> 5554)
+                            for /f "tokens=2 delims=-" %%a in ("%UDID%") do set EMULATOR_PORT=%%a
                             
-                            # Wait for emulator to be ready
+                            rem Start emulator in background using PowerShell
+                            powershell -Command "Start-Process -FilePath '%ANDROID_HOME%\\emulator\\emulator.exe' -ArgumentList '-avd', '%DEVICE_NAME%', '-port', '%EMULATOR_PORT%', '-no-audio', '-no-window', '-gpu', 'swiftshader_indirect' -WindowStyle Hidden"
+                            
+                            rem Wait for emulator to be ready
                             echo "Waiting for emulator to start..."
-                            timeout=300
-                            while [ $timeout -gt 0 ]; do
-                                if adb devices | grep -q "${UDID}"; then
-                                    echo "Emulator is connected"
-                                    break
-                                fi
-                                sleep 5
-                                timeout=$((timeout - 5))
-                            done
-                            
-                            if [ $timeout -le 0 ]; then
+                            set TIMEOUT=60
+                            :wait_loop
+                            if %TIMEOUT% leq 0 (
                                 echo "ERROR: Emulator failed to start within 5 minutes"
-                                exit 1
-                            fi
+                                exit /b 1
+                            )
+                            timeout/t 5 >nul
+                            adb devices | findstr "%UDID%" >nul
+                            if %errorlevel% neq 0 (
+                                set /a TIMEOUT=%TIMEOUT%-1
+                                goto wait_loop
+                            )
                             
-                            # Wait for emulator to be fully booted
+                            echo "Emulator is connected"
+                            
+                            rem Wait for emulator to be fully booted
                             echo "Waiting for emulator to be ready..."
-                            adb -s ${UDID} wait-for-device shell 'while [[ -z $(getprop sys.boot_completed | tr -d \'\\r\') ]]; do sleep 1; done; input keyevent 82'
-                        fi
+                            adb -s %UDID% wait-for-device
+                            adb -s %UDID% shell "while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done"
+                        )
                         
                         echo "Emulator is ready!"
                         adb devices
@@ -161,21 +173,21 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh '''
+                        bat '''
                             echo "Compiling the project..."
                             mvn clean compile -DskipTests=true
                             
                             echo "Running Appium tests..."
                             echo "Note: Appium server will be started programmatically by the framework"
                             
-                            # Update TestNG XML with current device parameters
-                            sed -i "s/value=\"pixel_7\"/value=\"${DEVICE_NAME}\"/g" testng.xml
-                            sed -i "s/value=\"emulator-5554\"/value=\"${UDID}\"/g" testng.xml
+                            rem Update TestNG XML with current device parameters (Windows version)
+                            powershell -Command "(Get-Content testng.xml) -replace 'value=\"pixel_7\"', 'value=\"%DEVICE_NAME%\"' | Set-Content testng.xml"
+                            powershell -Command "(Get-Content testng.xml) -replace 'value=\"emulator-5554\"', 'value=\"%UDID%\"' | Set-Content testng.xml"
                             
-                            echo "Updated testng.xml with device: ${DEVICE_NAME}, UDID: ${UDID}"
-                            cat testng.xml
+                            echo "Updated testng.xml with device: %DEVICE_NAME%, UDID: %UDID%"
+                            type testng.xml
                             
-                            # Run tests with Maven Surefire plugin
+                            rem Run tests with Maven Surefire plugin
                             mvn test -Dsurefire.suiteXmlFiles=testng.xml -DforkCount=1 -DreuseForks=false
                         '''
                     } catch (Exception e) {
@@ -188,26 +200,26 @@ pipeline {
         
         stage('Generate Reports') {
             steps {
-                sh '''
+                bat '''
                     echo "Generating test reports..."
                     
-                    # Archive TestNG reports
-                    if [ -d "test-output" ]; then
+                    rem Archive TestNG reports
+                    if exist "test-output" (
                         echo "TestNG reports found"
-                        ls -la test-output/
-                    fi
+                        dir "test-output"
+                    )
                     
-                    # Archive Surefire reports
-                    if [ -d "target/surefire-reports" ]; then
+                    rem Archive Surefire reports
+                    if exist "target\\surefire-reports" (
                         echo "Surefire reports found"
-                        ls -la target/surefire-reports/
-                    fi
+                        dir "target\\surefire-reports"
+                    )
                     
-                    # Archive logs
-                    if [ -d "logs" ]; then
+                    rem Archive logs
+                    if exist "logs" (
                         echo "Log files found"
-                        ls -la logs/
-                    fi
+                        dir "logs"
+                    )
                     
                     echo "Report generation completed"
                 '''
@@ -220,10 +232,11 @@ pipeline {
             script {
                 // Clean up emulator if it was started
                 if (params.UDID.startsWith('emulator-')) {
-                    sh '''
+                    bat '''
                         echo "Cleaning up emulator..."
-                        adb -s ${UDID} emu kill || true
-                        pkill -f "emulator.*${DEVICE_NAME}" || true
+                        adb -s %UDID% emu kill || echo "Failed to kill emulator via ADB"
+                        taskkill /f /im emulator.exe || echo "No emulator process found"
+                        taskkill /f /im qemu-system*.exe || echo "No qemu process found"
                     '''
                 }
                 
@@ -271,7 +284,7 @@ pipeline {
                         <li><strong>Device:</strong> ${params.DEVICE_NAME}</li>
                         <li><strong>UDID:</strong> ${params.UDID}</li>
                         <li><strong>Test Suite:</strong> ${params.TEST_SUITE}</li>
-                        <li><strong>Platform:</strong> Android</li>
+                        <li><strong>Platform:</strong> Android on Windows</li>
                     </ul>
                     
                     <h3>📊 Reports Available:</h3>
@@ -312,7 +325,7 @@ pipeline {
                     <li><strong>Device:</strong> ${params.DEVICE_NAME}</li>
                     <li><strong>UDID:</strong> ${params.UDID}</li>
                     <li><strong>Test Suite:</strong> ${params.TEST_SUITE}</li>
-                    <li><strong>Platform:</strong> Android</li>
+                    <li><strong>Platform:</strong> Android on Windows</li>
                 </ul>
                 
                 <h3>🔍 Troubleshooting:</h3>
@@ -352,7 +365,7 @@ pipeline {
                     <li><strong>Device:</strong> ${params.DEVICE_NAME}</li>
                     <li><strong>UDID:</strong> ${params.UDID}</li>
                     <li><strong>Test Suite:</strong> ${params.TEST_SUITE}</li>
-                    <li><strong>Platform:</strong> Android</li>
+                    <li><strong>Platform:</strong> Android on Windows</li>
                 </ul>
                 
                 <h3>📊 Reports Available:</h3>
