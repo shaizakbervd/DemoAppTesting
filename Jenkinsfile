@@ -171,7 +171,7 @@ pipeline {
                             for /f "tokens=2 delims=-" %%a in ("%UDID%") do set EMULATOR_PORT=%%a
                             
                             rem Start emulator in background using PowerShell
-                            powershell -Command "Start-Process -FilePath '%ANDROID_HOME%\\emulator\\emulator.exe' -ArgumentList '-avd', '%DEVICE_NAME%', '-port', '%EMULATOR_PORT%', '-no-audio', '-no-window', '-gpu', 'swiftshader_indirect' -WindowStyle Hidden"
+                            powershell -Command "Start-Process -FilePath '%ANDROID_HOME%\emulator\emulator.exe' -ArgumentList '-avd', '%DEVICE_NAME%', '-port', '%EMULATOR_PORT%', '-no-audio', '-no-window', '-gpu', 'swiftshader_indirect' -WindowStyle Hidden"
                             
                             rem Wait for emulator to be ready
                             echo "Waiting for emulator to start..."
@@ -181,7 +181,7 @@ pipeline {
                                 echo "ERROR: Emulator failed to start within 5 minutes"
                                 exit /b 1
                             )
-                            timeout/t 5 >nul
+                            timeout /t 5 >nul
                             adb devices | findstr "%UDID%" >nul
                             if %errorlevel% neq 0 (
                                 set /a TIMEOUT=%TIMEOUT%-1
